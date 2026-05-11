@@ -24,14 +24,13 @@ export default function PriceTable({ data }) {
         cell: (info) => (
           <span className="text-slate-500 text-xs">{info.row.index + 1}</span>
         ),
-        size: 40,
         enableSorting: false,
       },
       {
         accessorKey: 'SKU_ID',
         header: 'Product SKU',
         cell: (info) => (
-          <span className="font-mono text-xs text-violet-300">
+          <span className="font-mono text-xs text-violet-300 break-all">
             {info.getValue()}
           </span>
         ),
@@ -40,33 +39,31 @@ export default function PriceTable({ data }) {
         accessorKey: 'Title',
         header: 'Title',
         cell: (info) => (
-          <span className="text-slate-200 text-sm" title={info.getValue()}>
-            {info.getValue()?.length > 45
-              ? info.getValue().substring(0, 45) + '…'
-              : info.getValue()}
+          // No truncation — allow full wrap into multiple lines
+          <span className="text-slate-200 text-xs leading-snug">
+            {info.getValue()}
           </span>
         ),
-        size: 280,
       },
       {
         accessorKey: 'PP',
         header: 'PP (₹)',
         cell: (info) => (
-          <span className="text-slate-300 font-medium">{fmt(info.getValue())}</span>
+          <span className="text-slate-300 font-medium text-xs">{fmt(info.getValue())}</span>
         ),
       },
       {
         accessorKey: 'SP',
         header: 'Current SP (₹)',
         cell: (info) => (
-          <span className="text-slate-300">{fmt(info.getValue())}</span>
+          <span className="text-slate-300 text-xs">{fmt(info.getValue())}</span>
         ),
       },
       {
         accessorKey: 'RecommendedSP',
         header: 'Recommended SP (₹)',
         cell: (info) => (
-          <span className="text-emerald-400 font-semibold">
+          <span className="text-emerald-400 font-semibold text-xs">
             {fmt(info.getValue())}
           </span>
         ),
@@ -79,7 +76,7 @@ export default function PriceTable({ data }) {
           if (val == null || val <= 0)
             return <span className="text-slate-500">—</span>;
           return (
-            <span className="inline-flex items-center gap-1 text-amber-400 font-semibold">
+            <span className="inline-flex items-center justify-center gap-1 text-amber-400 font-semibold text-xs">
               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                 <path
                   fillRule="evenodd"
@@ -98,8 +95,8 @@ export default function PriceTable({ data }) {
         cell: (info) => {
           const row = info.row.original;
           return (
-            <div className="flex flex-col gap-0.5">
-              <span className="text-sky-400 font-medium">
+            <div className="flex flex-col items-center gap-0.5">
+              <span className="text-sky-400 font-medium text-xs">
                 {fmt(info.getValue())}
               </span>
               <span className="text-slate-500 text-xs">{row.StoreName}</span>
@@ -111,10 +108,11 @@ export default function PriceTable({ data }) {
         accessorKey: 'CompetitorStockStatus',
         header: 'Comp. Stock',
         cell: (info) => <StatusBadge status={info.getValue()} />,
+        enableSorting: false,
       },
       {
         accessorKey: 'CompetitorURL',
-        header: 'Competitor Link',
+        header: 'Link',
         enableSorting: false,
         cell: (info) => {
           const url = info.getValue();
@@ -124,7 +122,8 @@ export default function PriceTable({ data }) {
               href={url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 underline underline-offset-2 transition-colors"
+              className="inline-flex items-center gap-1 text-xs text-violet-400
+                hover:text-violet-300 underline underline-offset-2 transition-colors"
             >
               View
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -149,8 +148,8 @@ export default function PriceTable({ data }) {
   });
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-slate-700/60 shadow-2xl">
-      <table className="w-full text-sm border-collapse">
+    <div className="rounded-xl border border-slate-700/60 shadow-2xl overflow-hidden">
+      <table className="w-full text-sm border-collapse table-fixed">
         <thead>
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id} className="bg-slate-800/80 border-b border-slate-700">
@@ -159,12 +158,14 @@ export default function PriceTable({ data }) {
                   key={header.id}
                   onClick={header.column.getToggleSortingHandler()}
                   className={`
-                    px-4 py-3 text-left text-xs font-semibold text-slate-400
-                    uppercase tracking-wider whitespace-nowrap
-                    ${header.column.getCanSort() ? 'cursor-pointer select-none hover:text-slate-200 transition-colors' : ''}
+                    px-2 py-3 text-center text-xs font-semibold text-slate-400
+                    uppercase tracking-wider
+                    ${header.column.getCanSort()
+                      ? 'cursor-pointer select-none hover:text-slate-200 transition-colors'
+                      : ''}
                   `}
                 >
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center justify-center gap-1">
                     {flexRender(header.column.columnDef.header, header.getContext())}
                     {header.column.getCanSort() && (
                       <span className="text-slate-600">
@@ -182,13 +183,16 @@ export default function PriceTable({ data }) {
             <tr
               key={row.id}
               className={`
-                border-b border-slate-800 transition-colors
+                border-b border-slate-800 transition-colors align-middle
                 ${i % 2 === 0 ? 'bg-slate-900/40' : 'bg-slate-900/20'}
                 hover:bg-slate-800/50
               `}
             >
               {row.getVisibleCells().map((cell) => (
-                <td key={cell.id} className="px-4 py-3 whitespace-nowrap">
+                <td
+                  key={cell.id}
+                  className="px-2 py-3 text-center align-middle"
+                >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>
               ))}
@@ -199,3 +203,5 @@ export default function PriceTable({ data }) {
     </div>
   );
 }
+
+

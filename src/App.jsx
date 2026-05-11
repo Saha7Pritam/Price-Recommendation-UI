@@ -50,7 +50,7 @@ export default function App() {
               <h1 className="text-lg font-bold text-white tracking-tight">
                 TPS Price Intelligence
               </h1>
-              <p className="text-xs text-slate-500">Competitor Price Recommendation Engine — Prototype</p>
+              <p className="text-xs text-slate-500">Price Recommendation Engine — Prototype</p>
             </div>
           </div>
 
@@ -100,7 +100,7 @@ export default function App() {
             <StatCard label="Total Products" value={totalProducts} color="violet" />
             <StatCard label="Optimized Prices" value={optimizedCount} sub="99% of competitor" color="emerald" />
             <StatCard label="At Floor Price" value={floorCount} sub="PP × 1.30" color="sky" />
-            <StatCard label="Avg Extra Profit" value={`+${avgExtraProfit}%`} sub="above floor" color="amber" />
+            {/* <StatCard label="Avg Extra Profit" value={`+${avgExtraProfit}%`} sub="above floor" color="amber" /> */}
           </div>
         )}
 
