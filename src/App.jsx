@@ -100,7 +100,7 @@ export default function App() {
             <StatCard label="Total Products" value={totalProducts} color="violet" />
             <StatCard label="Optimized Prices" value={optimizedCount} sub="99% of competitor" color="emerald" />
             <StatCard label="At Floor Price" value={floorCount} sub="PP × 1.30" color="sky" />
-            <StatCard label="Avg Extra Profit" value={`+${avgExtraProfit}%`} sub="above floor" color="amber" />
+            {/* <StatCard label="Avg Extra Profit" value={`+${avgExtraProfit}%`} sub="above floor" color="amber" /> */}
           </div>
         )}
 
