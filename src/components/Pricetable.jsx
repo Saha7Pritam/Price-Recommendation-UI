@@ -2,10 +2,9 @@
 import {
   useReactTable,
   getCoreRowModel,
-  getSortedRowModel,
   flexRender,
 } from '@tanstack/react-table';
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import StatusBadge from './StatusBadge';
 
 const fmt = (val) =>
@@ -14,8 +13,6 @@ const fmt = (val) =>
     : '—';
 
 export default function PriceTable({ data }) {
-  const [sorting, setSorting] = useState([]);
-
   const columns = useMemo(
     () => [
       {
@@ -24,7 +21,6 @@ export default function PriceTable({ data }) {
         cell: (info) => (
           <span className="text-slate-500 text-xs">{info.row.index + 1}</span>
         ),
-        enableSorting: false,
       },
       {
         accessorKey: 'SKU_ID',
@@ -39,7 +35,6 @@ export default function PriceTable({ data }) {
         accessorKey: 'Title',
         header: 'Title',
         cell: (info) => (
-          // No truncation — allow full wrap into multiple lines
           <span className="text-slate-200 text-xs leading-snug">
             {info.getValue()}
           </span>
@@ -60,33 +55,33 @@ export default function PriceTable({ data }) {
         ),
       },
       {
-  accessorKey: 'RecommendedSP',
-  header: 'Recommended SP (₹)',
-  cell: (info) => {
-    const row = info.row.original;
-    const cob = row.COBPct ?? 7;
-    const margin = row.MarginPct ?? 5;
-    return (
-      <div className="relative group inline-block">
-        <span className="text-emerald-400 font-semibold text-xs cursor-default">
-          {fmt(info.getValue())}
-        </span>
-        <div className="
-          absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2
-          px-2.5 py-1.5 rounded-lg
-          bg-slate-700 border border-slate-600
-          text-xs text-slate-200 whitespace-nowrap shadow-xl
-          opacity-0 pointer-events-none
-          group-hover:opacity-100
-          transition-opacity duration-150
-        ">
-          Includes GST (18%) & COB ({cob}%) &amp; Margin ({margin}%)
-          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-600" />
-        </div>
-      </div>
-    );
-  },
-},
+        accessorKey: 'RecommendedSP',
+        header: 'Recommended SP (₹)',
+        cell: (info) => {
+          const row = info.row.original;
+          const cob = row.COBPct ?? 7;
+          const margin = row.MarginPct ?? 5;
+          return (
+            <div className="relative group inline-block">
+              <span className="text-emerald-400 font-semibold text-xs cursor-default">
+                {fmt(info.getValue())}
+              </span>
+              <div className="
+                absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2
+                px-2.5 py-1.5 rounded-lg
+                bg-slate-700 border border-slate-600
+                text-xs text-slate-200 whitespace-nowrap shadow-xl
+                opacity-0 pointer-events-none
+                group-hover:opacity-100
+                transition-opacity duration-150
+              ">
+                Includes GST (18%) &amp; COB ({cob}%) &amp; Margin ({margin}%)
+                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-600" />
+              </div>
+            </div>
+          );
+        },
+      },
       {
         accessorKey: 'ExtraProfitPct',
         header: 'Extra Profit',
@@ -127,12 +122,10 @@ export default function PriceTable({ data }) {
         accessorKey: 'CompetitorStockStatus',
         header: 'Comp. Stock',
         cell: (info) => <StatusBadge status={info.getValue()} />,
-        enableSorting: false,
       },
       {
         accessorKey: 'CompetitorURL',
         header: 'Link',
-        enableSorting: false,
         cell: (info) => {
           const url = info.getValue();
           if (!url) return <span className="text-slate-500">—</span>;
@@ -160,10 +153,7 @@ export default function PriceTable({ data }) {
   const table = useReactTable({
     data,
     columns,
-    state: { sorting },
-    onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
   });
 
   return (
@@ -175,23 +165,9 @@ export default function PriceTable({ data }) {
               {headerGroup.headers.map((header) => (
                 <th
                   key={header.id}
-                  onClick={header.column.getToggleSortingHandler()}
-                  className={`
-                    px-2 py-3 text-center text-xs font-semibold text-slate-400
-                    uppercase tracking-wider
-                    ${header.column.getCanSort()
-                      ? 'cursor-pointer select-none hover:text-slate-200 transition-colors'
-                      : ''}
-                  `}
+                  className="px-2 py-3 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider"
                 >
-                  <div className="flex items-center justify-center gap-1">
-                    {flexRender(header.column.columnDef.header, header.getContext())}
-                    {header.column.getCanSort() && (
-                      <span className="text-slate-600">
-                        {{ asc: '↑', desc: '↓' }[header.column.getIsSorted()] ?? '↕'}
-                      </span>
-                    )}
-                  </div>
+                  {flexRender(header.column.columnDef.header, header.getContext())}
                 </th>
               ))}
             </tr>
@@ -208,10 +184,7 @@ export default function PriceTable({ data }) {
               `}
             >
               {row.getVisibleCells().map((cell) => (
-                <td
-                  key={cell.id}
-                  className="px-2 py-3 text-center align-middle"
-                >
+                <td key={cell.id} className="px-2 py-3 text-center align-middle">
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>
               ))}
@@ -222,5 +195,3 @@ export default function PriceTable({ data }) {
     </div>
   );
 }
-
-
