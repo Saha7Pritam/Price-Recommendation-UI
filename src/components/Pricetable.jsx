@@ -60,14 +60,33 @@ export default function PriceTable({ data }) {
         ),
       },
       {
-        accessorKey: 'RecommendedSP',
-        header: 'Recommended SP (₹)',
-        cell: (info) => (
-          <span className="text-emerald-400 font-semibold text-xs">
-            {fmt(info.getValue())}
-          </span>
-        ),
-      },
+  accessorKey: 'RecommendedSP',
+  header: 'Recommended SP (₹)',
+  cell: (info) => {
+    const row = info.row.original;
+    const cob = row.COBPct ?? 7;
+    const margin = row.MarginPct ?? 5;
+    return (
+      <div className="relative group inline-block">
+        <span className="text-emerald-400 font-semibold text-xs cursor-default">
+          {fmt(info.getValue())}
+        </span>
+        <div className="
+          absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2
+          px-2.5 py-1.5 rounded-lg
+          bg-slate-700 border border-slate-600
+          text-xs text-slate-200 whitespace-nowrap shadow-xl
+          opacity-0 pointer-events-none
+          group-hover:opacity-100
+          transition-opacity duration-150
+        ">
+          Includes GST (18%) & COB ({cob}%) &amp; Margin ({margin}%)
+          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-600" />
+        </div>
+      </div>
+    );
+  },
+},
       {
         accessorKey: 'ExtraProfitPct',
         header: 'Extra Profit',
