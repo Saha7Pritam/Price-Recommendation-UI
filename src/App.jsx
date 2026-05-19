@@ -1,13 +1,19 @@
 // src/App.jsx
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import PriceTable from './components/Pricetable';
+import SearchBar from './components/SearchBar';
+import CategoryFilter from './components/CategoryFilter';
 import { fetchRecommendations } from './services/api';
 
 export default function App() {
-  const [data, setData]       = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState(null);
+  const [data, setData]             = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState(null);
   const [lastRefreshed, setLastRefreshed] = useState(null);
+
+  // ── Filter state ──────────────────────────────────────────
+  const [searchQuery, setSearchQuery]     = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
 
   async function loadData() {
     setLoading(true);
@@ -25,13 +31,34 @@ export default function App() {
 
   useEffect(() => { loadData(); }, []);
 
-  // Summary stats
-  const totalProducts    = data.length;
-  const optimizedCount   = data.filter(r => r.ExtraProfitPct > 0).length;
-  const floorCount       = totalProducts - optimizedCount;
-  const avgExtraProfit   = data.length
-    ? (data.reduce((sum, r) => sum + (r.ExtraProfitPct > 0 ? r.ExtraProfitPct : 0), 0) / optimizedCount || 0).toFixed(2)
-    : 0;
+  // ── Derived: unique sorted categories from loaded data ────
+  const categories = useMemo(() => {
+    const cats = [...new Set(data.map(r => r.Category).filter(Boolean))];
+    return cats.sort((a, b) => a.localeCompare(b));
+  }, [data]);
+
+  // ── Filtered data ─────────────────────────────────────────
+  const filteredData = useMemo(() => {
+    let result = data;
+
+    if (selectedCategory) {
+      result = result.filter(r => r.Category === selectedCategory);
+    }
+
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(r =>
+        (r.SKU_ID || '').toLowerCase().includes(q)
+      );
+    }
+
+    return result;
+  }, [data, searchQuery, selectedCategory]);
+
+  // ── Summary stats (on full data, not filtered) ────────────
+  const totalProducts  = data.length;
+  const optimizedCount = data.filter(r => r.ExtraProfitPct > 0).length;
+  const floorCount     = totalProducts - optimizedCount;
 
   return (
     <div className="min-h-screen bg-[#0f1117] font-sans">
@@ -79,28 +106,12 @@ export default function App() {
 
       <main className="max-w-[1600px] mx-auto px-6 py-8">
 
-        {/* ── Formula banner ── */}
-        {/* <div className="mb-6 p-3 rounded-lg bg-slate-800/50 border border-slate-700/50 flex items-center gap-3">
-          <svg className="w-4 h-4 text-violet-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <p className="text-xs text-slate-400">
-            <span className="text-slate-200 font-medium">Formula: </span>
-            Base floor = PP × 1.30 &nbsp;(GST 18% + Cost of Business 7% + Min Margin 5%)&nbsp;
-            <span className="text-slate-500 mx-1">|</span>
-            <span className="text-slate-200 font-medium">Optimized: </span>
-            If competitor price &gt; floor → Recommended SP = 99% of competitor price
-          </p>
-        </div> */}
-
         {/* ── Stats cards ── */}
         {!loading && !error && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
             <StatCard label="Total Products" value={totalProducts} color="violet" />
             <StatCard label="Optimized Prices" value={optimizedCount} sub="99% of competitor" color="emerald" />
             <StatCard label="At Floor Price" value={floorCount} sub="PP × 1.30" color="sky" />
-            {/* <StatCard label="Avg Extra Profit" value={`+${avgExtraProfit}%`} sub="above floor" color="amber" /> */}
           </div>
         )}
 
@@ -124,16 +135,56 @@ export default function App() {
           </div>
         )}
 
-        {/* ── Table ── */}
+        {/* ── Search + Filter toolbar + Table ── */}
         {!loading && !error && data.length > 0 && (
           <>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-slate-300">
-                Showing {data.length} products with competitor matches
-              </h2>
-              <span className="text-xs text-slate-500">Click column headers to sort</span>
+            {/* Toolbar */}
+            <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+              <div className="flex items-center gap-3">
+                <SearchBar onSearch={setSearchQuery} value={searchQuery} />
+                <CategoryFilter
+                  categories={categories}
+                  value={selectedCategory}
+                  onChange={setSelectedCategory}
+                />
+              </div>
+
+              {/* Result count */}
+              <div className="flex items-center gap-2">
+                {(searchQuery || selectedCategory) && (
+                  <button
+                    onClick={() => { setSearchQuery(''); setSelectedCategory(''); }}
+                    className="text-xs text-slate-500 hover:text-slate-300 underline underline-offset-2 transition-colors"
+                  >
+                    Clear filters
+                  </button>
+                )}
+                <span className="text-xs text-slate-500">
+                  {filteredData.length === data.length
+                    ? `${data.length} products`
+                    : `${filteredData.length} of ${data.length} products`}
+                </span>
+              </div>
             </div>
-            <PriceTable data={data} />
+
+            {/* No results state */}
+            {filteredData.length === 0 ? (
+              <div className="text-center py-20 text-slate-500">
+                <svg className="w-8 h-8 mx-auto mb-3 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <p className="text-sm">No products match your search.</p>
+                <button
+                  onClick={() => { setSearchQuery(''); setSelectedCategory(''); }}
+                  className="mt-2 text-xs text-violet-400 hover:text-violet-300 transition-colors"
+                >
+                  Clear filters
+                </button>
+              </div>
+            ) : (
+              <PriceTable data={filteredData} />
+            )}
           </>
         )}
       </main>
