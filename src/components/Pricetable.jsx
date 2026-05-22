@@ -4,154 +4,161 @@ import {
   getCoreRowModel,
   flexRender,
 } from '@tanstack/react-table';
-import { useMemo } from 'react';
-import StatusBadge from './StatusBadge';
+import { useMemo, useState } from 'react';
+import StatusBadge    from './StatusBadge';
+import RefreshButton  from './RefreshButton';
 
 const fmt = (val) =>
   val != null
     ? '₹' + Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2 })
     : '—';
 
-export default function PriceTable({ data }) {
-  const columns = useMemo(
-    () => [
-      {
-        header: '#',
-        id: 'index',
-        cell: (info) => (
-          <span className="text-slate-500 text-xs">{info.row.index + 1}</span>
-        ),
-      },
-      {
-        accessorKey: 'SKU_ID',
-        header: 'Product SKU',
-        cell: (info) => (
-          <span className="font-mono text-xs text-violet-300 break-all">
-            {info.getValue()}
-          </span>
-        ),
-      },
-      {
-        accessorKey: 'Title',
-        header: 'Title',
-        cell: (info) => (
-          <span className="text-slate-200 text-xs leading-snug">
-            {info.getValue()}
-          </span>
-        ),
-      },
-      {
-        accessorKey: 'PP',
-        header: 'PP (₹)',
-        cell: (info) => (
-          <span className="text-slate-300 font-medium text-xs">{fmt(info.getValue())}</span>
-        ),
-      },
-      {
-        accessorKey: 'SP',
-        header: 'Current SP (₹)',
-        cell: (info) => (
-          <span className="text-slate-300 text-xs">{fmt(info.getValue())}</span>
-        ),
-      },
-      {
-        accessorKey: 'RecommendedSP',
-        header: 'Recommended SP (₹)',
-        cell: (info) => {
-          const row = info.row.original;
-          const cob = row.COBPct ?? 7;
-          const margin = row.MarginPct ?? 5;
-          return (
-            <div className="relative group inline-block">
-              <span className="text-emerald-400 font-semibold text-xs cursor-default">
-                {fmt(info.getValue())}
-              </span>
-              <div className="
-                absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2
-                px-2.5 py-1.5 rounded-lg
-                bg-slate-700 border border-slate-600
-                text-xs text-slate-200 whitespace-nowrap shadow-xl
-                opacity-0 pointer-events-none
-                group-hover:opacity-100
-                transition-opacity duration-150
-              ">
-                Includes GST (18%) &amp; COB ({cob}%) &amp; Margin ({margin}%)
-                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-600" />
-              </div>
-            </div>
-          );
-        },
-      },
-      {
-        accessorKey: 'ExtraProfitPct',
-        header: 'Extra Profit',
-        cell: (info) => {
-          const val = info.getValue();
-          if (val == null || val <= 0)
-            return <span className="text-slate-500">—</span>;
-          return (
-            <span className="inline-flex items-center justify-center gap-1 text-amber-400 font-semibold text-xs">
-              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fillRule="evenodd"
-                  d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              +{Number(val).toFixed(2)}%
+export default function PriceTable({ data: initialData }) {
+  const [rows, setRows] = useState(initialData);
+  useMemo(() => setRows(initialData), [initialData]);
+
+  function handleRowRefreshed(skuId, result) {
+    setRows(prev => prev.map(row => {
+      if (row.SKU_ID !== skuId) return row;
+      return {
+        ...row,
+        CompetitorPrice : result.newCompetitorPrice  ?? row.CompetitorPrice,
+        RecommendedSP   : result.newRecommendedSP    ?? row.RecommendedSP,
+        ExtraProfitPct  : row.PP
+          ? parseFloat((((result.newRecommendedSP - (row.PP * 1.30)) / (row.PP * 1.30)) * 100).toFixed(2))
+          : row.ExtraProfitPct,
+      };
+    }));
+  }
+
+  const columns = useMemo(() => [
+    {
+      header: '#',
+      id: 'index',
+      cell: (info) => <span className="text-slate-500 text-xs">{info.row.index + 1}</span>,
+    },
+    {
+      accessorKey: 'SKU_ID',
+      header: 'Product SKU',
+      cell: (info) => (
+        <span className="font-mono text-xs text-violet-300 break-all">{info.getValue()}</span>
+      ),
+    },
+    {
+      accessorKey: 'Title',
+      header: 'Title',
+      cell: (info) => (
+        <span className="text-slate-200 text-xs leading-snug">{info.getValue()}</span>
+      ),
+    },
+    {
+      accessorKey: 'PP',
+      header: 'PP (₹)',
+      cell: (info) => <span className="text-slate-300 font-medium text-xs">{fmt(info.getValue())}</span>,
+    },
+    {
+      accessorKey: 'SP',
+      header: 'Current SP (₹)',
+      cell: (info) => <span className="text-slate-300 text-xs">{fmt(info.getValue())}</span>,
+    },
+    {
+      accessorKey: 'RecommendedSP',
+      header: 'Recommended SP (₹)',
+      cell: (info) => {
+        const row = info.row.original;
+        const cob = row.COBPct ?? 7;
+        const margin = row.MarginPct ?? 5;
+        return (
+          <div className="relative group inline-block">
+            <span className="text-emerald-400 font-semibold text-xs cursor-default">
+              {fmt(info.getValue())}
             </span>
-          );
-        },
-      },
-      {
-        accessorKey: 'CompetitorPrice',
-        header: 'Competitor Price (₹)',
-        cell: (info) => {
-          const row = info.row.original;
-          return (
-            <div className="flex flex-col items-center gap-0.5">
-              <span className="text-sky-400 font-medium text-xs">
-                {fmt(info.getValue())}
-              </span>
-              <span className="text-slate-500 text-xs">{row.StoreName}</span>
+            <div className="
+              absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2
+              px-2.5 py-1.5 rounded-lg bg-slate-700 border border-slate-600
+              text-xs text-slate-200 whitespace-nowrap shadow-xl
+              opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-150
+            ">
+              Includes GST (18%) &amp; COB ({cob}%) &amp; Margin ({margin}%)
+              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-600" />
             </div>
-          );
-        },
+          </div>
+        );
       },
-      {
-        accessorKey: 'CompetitorStockStatus',
-        header: 'Comp. Stock',
-        cell: (info) => <StatusBadge status={info.getValue()} />,
+    },
+    {
+      accessorKey: 'ExtraProfitPct',
+      header: 'Extra Profit',
+      cell: (info) => {
+        const val = info.getValue();
+        if (val == null || val <= 0) return <span className="text-slate-500">—</span>;
+        return (
+          <span className="inline-flex items-center justify-center gap-1 text-amber-400 font-semibold text-xs">
+            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd"
+                d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"
+                clipRule="evenodd" />
+            </svg>
+            +{Number(val).toFixed(2)}%
+          </span>
+        );
       },
-      {
-        accessorKey: 'CompetitorURL',
-        header: 'Link',
-        cell: (info) => {
-          const url = info.getValue();
-          if (!url) return <span className="text-slate-500">—</span>;
-          return (
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-violet-400
-                hover:text-violet-300 underline underline-offset-2 transition-colors"
-            >
-              View
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
-            </a>
-          );
-        },
+    },
+    {
+      accessorKey: 'CompetitorPrice',
+      header: 'Competitor Price (₹)',
+      cell: (info) => {
+        const row = info.row.original;
+        return (
+          <div className="flex flex-col items-center gap-0.5">
+            <span className="text-sky-400 font-medium text-xs">{fmt(info.getValue())}</span>
+            <span className="text-slate-500 text-xs">{row.StoreName}</span>
+          </div>
+        );
       },
-    ],
-    []
-  );
+    },
+    {
+      accessorKey: 'CompetitorStockStatus',
+      header: 'Comp. Stock',
+      cell: (info) => <StatusBadge status={info.getValue()} />,
+    },
+    {
+      accessorKey: 'CompetitorURL',
+      header: 'Link',
+      cell: (info) => {
+        const url = info.getValue();
+        if (!url) return <span className="text-slate-500">—</span>;
+        return (
+          <a href={url} target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 underline underline-offset-2 transition-colors">
+            View
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+          </a>
+        );
+      },
+    },
+    {
+      id    : 'refresh',
+      header: 'Refresh',
+      cell  : (info) => {
+        const row = info.row.original;
+        return (
+          <RefreshButton
+            skuId         = {row.SKU_ID}
+            competitorUrl = {row.CompetitorURL}
+            onRefreshed   = {handleRowRefreshed}
+          />
+        );
+      },
+    },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], []);
 
   const table = useReactTable({
-    data,
+    data: rows,
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
@@ -163,10 +170,8 @@ export default function PriceTable({ data }) {
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id} className="bg-slate-800/80 border-b border-slate-700">
               {headerGroup.headers.map((header) => (
-                <th
-                  key={header.id}
-                  className="px-2 py-3 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider"
-                >
+                <th key={header.id}
+                  className="px-2 py-3 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">
                   {flexRender(header.column.columnDef.header, header.getContext())}
                 </th>
               ))}
@@ -175,14 +180,9 @@ export default function PriceTable({ data }) {
         </thead>
         <tbody>
           {table.getRowModel().rows.map((row, i) => (
-            <tr
-              key={row.id}
-              className={`
-                border-b border-slate-800 transition-colors align-middle
-                ${i % 2 === 0 ? 'bg-slate-900/40' : 'bg-slate-900/20'}
-                hover:bg-slate-800/50
-              `}
-            >
+            <tr key={row.id}
+              className={`border-b border-slate-800 transition-colors align-middle
+                ${i % 2 === 0 ? 'bg-slate-900/40' : 'bg-slate-900/20'} hover:bg-slate-800/50`}>
               {row.getVisibleCells().map((cell) => (
                 <td key={cell.id} className="px-2 py-3 text-center align-middle">
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}

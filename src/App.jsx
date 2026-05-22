@@ -3,17 +3,32 @@ import { useEffect, useState, useMemo } from 'react';
 import PriceTable from './components/Pricetable';
 import SearchBar from './components/SearchBar';
 import CategoryFilter from './components/CategoryFilter';
-import { fetchRecommendations } from './services/api';
+import { fetchRecommendations, checkAuth, logout } from './services/api';
 
 export default function App() {
-  const [data, setData]             = useState([]);
-  const [loading, setLoading]       = useState(true);
-  const [error, setError]           = useState(null);
+  const [user, setUser]                   = useState(null);
+  const [authChecked, setAuthChecked]     = useState(false);
+  const [data, setData]                   = useState([]);
+  const [loading, setLoading]             = useState(true);
+  const [error, setError]                 = useState(null);
   const [lastRefreshed, setLastRefreshed] = useState(null);
-
-  // ── Filter state ──────────────────────────────────────────
-  const [searchQuery, setSearchQuery]     = useState('');
+  const [searchQuery, setSearchQuery]         = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
+
+  // ── Check auth on load ────────────────────────────────────
+  useEffect(() => {
+    checkAuth().then(res => {
+      if (res.authenticated) setUser(res.user);
+      setAuthChecked(true);
+    });
+  }, []);
+
+  // ── Load data only after auth confirmed ───────────────────
+  useEffect(() => {
+    if (user) loadData();
+  }, [user]);
 
   async function loadData() {
     setLoading(true);
@@ -23,15 +38,19 @@ export default function App() {
       setData(rows);
       setLastRefreshed(new Date());
     } catch (err) {
-      setError('Failed to fetch data. Make sure the API server is running on port 3001.');
+      setError('Failed to fetch data. Make sure the API server is running on port 8000.');
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => { loadData(); }, []);
+  async function handleLogout() {
+    await logout();
+    setUser(null);
+    setData([]);
+  }
 
-  // ── Derived: unique sorted categories from loaded data ────
+  // ── Derived: unique sorted categories ────────────────────
   const categories = useMemo(() => {
     const cats = [...new Set(data.map(r => r.Category).filter(Boolean))];
     return cats.sort((a, b) => a.localeCompare(b));
@@ -40,26 +59,68 @@ export default function App() {
   // ── Filtered data ─────────────────────────────────────────
   const filteredData = useMemo(() => {
     let result = data;
-
     if (selectedCategory) {
       result = result.filter(r => r.Category === selectedCategory);
     }
-
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       result = result.filter(r =>
         (r.SKU_ID || '').toLowerCase().includes(q)
       );
     }
-
     return result;
   }, [data, searchQuery, selectedCategory]);
 
-  // ── Summary stats (on full data, not filtered) ────────────
+  // ── Summary stats ─────────────────────────────────────────
   const totalProducts  = data.length;
   const optimizedCount = data.filter(r => r.ExtraProfitPct > 0).length;
   const floorCount     = totalProducts - optimizedCount;
 
+  // ── Auth loading spinner ──────────────────────────────────
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen bg-[#0f1117] flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // ── Login page ────────────────────────────────────────────
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-[#0f1117] flex items-center justify-center">
+        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-10 flex flex-col items-center gap-6 w-full max-w-sm">
+          <div className="w-12 h-12 rounded-xl bg-violet-600 flex items-center justify-center">
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          </div>
+          <div className="text-center">
+            <h1 className="text-xl font-bold text-white">TPS Price Intelligence</h1>
+            <p className="text-sm text-slate-400 mt-1">Sign in with your TPS account to continue</p>
+          </div>
+          
+          <a
+            href={`${API_BASE}/auth/login`}
+            className="w-full flex items-center justify-center gap-3 px-4 py-2.5
+              bg-white hover:bg-slate-100 text-slate-800 font-medium text-sm
+              rounded-lg transition-colors"
+          >
+            <svg width="20" height="20" viewBox="0 0 21 21" fill="none">
+              <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+              <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+              <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+              <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+            </svg>
+            Sign in with Microsoft
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Main app (authenticated) ──────────────────────────────
   return (
     <div className="min-h-screen bg-[#0f1117] font-sans">
 
@@ -87,6 +148,20 @@ export default function App() {
                 Last updated: {lastRefreshed.toLocaleTimeString()}
               </span>
             )}
+
+            {/* User info */}
+            <span className="text-xs text-slate-400">{user.name}</span>
+
+            {/* Sign out */}
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg
+                bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors"
+            >
+              Sign out
+            </button>
+
+            {/* Refresh data */}
             <button
               onClick={loadData}
               disabled={loading}
@@ -115,7 +190,7 @@ export default function App() {
           </div>
         )}
 
-        {/* ── States ── */}
+        {/* ── Loading ── */}
         {loading && (
           <div className="flex flex-col items-center justify-center py-24 gap-4">
             <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
@@ -123,12 +198,14 @@ export default function App() {
           </div>
         )}
 
+        {/* ── Error ── */}
         {error && (
           <div className="p-4 rounded-xl bg-red-900/30 border border-red-700/50 text-red-400 text-sm">
             {error}
           </div>
         )}
 
+        {/* ── Empty ── */}
         {!loading && !error && data.length === 0 && (
           <div className="text-center py-24 text-slate-500">
             No recommendations found. Run the recommendation engine first.
@@ -138,7 +215,6 @@ export default function App() {
         {/* ── Search + Filter toolbar + Table ── */}
         {!loading && !error && data.length > 0 && (
           <>
-            {/* Toolbar */}
             <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
               <div className="flex items-center gap-3">
                 <SearchBar onSearch={setSearchQuery} value={searchQuery} />
@@ -148,8 +224,6 @@ export default function App() {
                   onChange={setSelectedCategory}
                 />
               </div>
-
-              {/* Result count */}
               <div className="flex items-center gap-2">
                 {(searchQuery || selectedCategory) && (
                   <button
@@ -167,7 +241,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* No results state */}
             {filteredData.length === 0 ? (
               <div className="text-center py-20 text-slate-500">
                 <svg className="w-8 h-8 mx-auto mb-3 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
