@@ -1,23 +1,36 @@
 // src/services/api.js
 import axios from 'axios';
 
-const BASE_URL = 'http://localhost:3001/api';
+const BASE = import.meta.env.VITE_API_BASE_URL;
+
+const BASE_URL = `${BASE}/api`;
+const AUTH_URL = `${BASE}/auth`;
 
 export async function fetchRecommendations() {
-  const response = await axios.get(`${BASE_URL}/recommendations`);
+  const response = await axios.get(`${BASE_URL}/recommendations`,
+    { withCredentials: true });
   return response.data.data;
 }
 
-// Manual single-product refresh.
-// Called when user clicks the refresh icon on a table row.
-//
-// @param {string} competitorUrl - competitor product page URL to re-scrape
-// @param {string} skuId         - our internal SKU_ID
-// @returns updated product data { newCompetitorPrice, newRecommendedSP, ... }
 export async function refreshProduct(competitorUrl, skuId) {
-  const response = await axios.post(`${BASE_URL}/refresh-product`, {
-    competitorUrl,
-    skuId,
-  });
+  const response = await axios.post(`${BASE_URL}/refresh-product`,
+    { competitorUrl, skuId },
+    { withCredentials: true }
+  );
   return response.data;
+}
+
+export async function checkAuth() {
+  try {
+    const res = await axios.get(`${AUTH_URL}/me`,
+      { withCredentials: true });
+    return res.data;
+  } catch {
+    return { authenticated: false };
+  }
+}
+
+export async function logout() {
+  await axios.post(`${AUTH_URL}/logout`, {},
+    { withCredentials: true });
 }
