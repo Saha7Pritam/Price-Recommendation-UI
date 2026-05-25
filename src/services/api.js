@@ -34,3 +34,10 @@ export async function logout() {
   await axios.post(`${AUTH_URL}/logout`, {},
     { withCredentials: true });
 }
+
+export async function fetchCompetitorDetails(skuId) {
+  const response = await axios.get(`${BASE_URL}/competitor-details/${encodeURIComponent(skuId)}`,
+    { withCredentials: true }
+  );
+  return response.data.data; // array of { CompetitorPrice, ProductURL, StoreName, StockStatus }
+}
