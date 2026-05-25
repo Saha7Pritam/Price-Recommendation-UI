@@ -7,6 +7,7 @@ import {
 import { useMemo, useState } from 'react';
 import StatusBadge    from './StatusBadge';
 import RefreshButton  from './RefreshButton';
+import CompetitorCell from './CompetitorCell';
 
 const fmt = (val) =>
   val != null
@@ -14,7 +15,9 @@ const fmt = (val) =>
     : '—';
 
 export default function PriceTable({ data: initialData }) {
-  const [rows, setRows] = useState(initialData);
+  const [rows, setRows]               = useState(initialData);
+  const [competitorCache, setCompetitorCache] = useState({});
+
   useMemo(() => setRows(initialData), [initialData]);
 
   function handleRowRefreshed(skuId, result) {
@@ -22,21 +25,25 @@ export default function PriceTable({ data: initialData }) {
       if (row.SKU_ID !== skuId) return row;
       return {
         ...row,
-        CompetitorPrice : result.newCompetitorPrice  ?? row.CompetitorPrice,
-        RecommendedSP   : result.newRecommendedSP    ?? row.RecommendedSP,
+        CompetitorPrice : result.newCompetitorPrice ?? row.CompetitorPrice,
+        RecommendedSP   : result.newRecommendedSP   ?? row.RecommendedSP,
         ExtraProfitPct  : row.PP
           ? parseFloat((((result.newRecommendedSP - (row.PP * 1.30)) / (row.PP * 1.30)) * 100).toFixed(2))
           : row.ExtraProfitPct,
       };
     }));
+
+    // Invalidate the competitor cache for this SKU so next hover re-fetches fresh data
+    setCompetitorCache(prev => {
+      const next = { ...prev };
+      delete next[skuId];
+      return next;
+    });
   }
 
   const columns = useMemo(() => [
-    {
-      header: '#',
-      id: 'index',
-      cell: (info) => <span className="text-slate-500 text-xs">{info.row.index + 1}</span>,
-    },
+    // ── # index column removed ──────────────────────────────
+
     {
       accessorKey: 'SKU_ID',
       header: 'Product SKU',
@@ -54,19 +61,23 @@ export default function PriceTable({ data: initialData }) {
     {
       accessorKey: 'PP',
       header: 'PP (₹)',
-      cell: (info) => <span className="text-slate-300 font-medium text-xs">{fmt(info.getValue())}</span>,
+      cell: (info) => (
+        <span className="text-slate-300 font-medium text-xs">{fmt(info.getValue())}</span>
+      ),
     },
     {
       accessorKey: 'SP',
       header: 'Current SP (₹)',
-      cell: (info) => <span className="text-slate-300 text-xs">{fmt(info.getValue())}</span>,
+      cell: (info) => (
+        <span className="text-slate-300 text-xs">{fmt(info.getValue())}</span>
+      ),
     },
     {
       accessorKey: 'RecommendedSP',
       header: 'Recommended SP (₹)',
       cell: (info) => {
-        const row = info.row.original;
-        const cob = row.COBPct ?? 7;
+        const row    = info.row.original;
+        const cob    = row.COBPct    ?? 7;
         const margin = row.MarginPct ?? 5;
         return (
           <div className="relative group inline-block">
@@ -105,15 +116,21 @@ export default function PriceTable({ data: initialData }) {
       },
     },
     {
-      accessorKey: 'CompetitorPrice',
+      // Replaces the old flat CompetitorPrice + Link columns
+      id    : 'competitorCell',
       header: 'Competitor Price (₹)',
-      cell: (info) => {
+      cell  : (info) => {
         const row = info.row.original;
         return (
-          <div className="flex flex-col items-center gap-0.5">
-            <span className="text-sky-400 font-medium text-xs">{fmt(info.getValue())}</span>
-            <span className="text-slate-500 text-xs">{row.StoreName}</span>
-          </div>
+          <CompetitorCell
+            skuId                 = {row.SKU_ID}
+            competitorPrice       = {row.CompetitorPrice}
+            storeName             = {row.StoreName}
+            competitorUrl         = {row.CompetitorURL}
+            competitorStockStatus = {row.CompetitorStockStatus}
+            cache                 = {competitorCache}
+            setCache              = {setCompetitorCache}
+          />
         );
       },
     },
@@ -121,24 +138,6 @@ export default function PriceTable({ data: initialData }) {
       accessorKey: 'CompetitorStockStatus',
       header: 'Comp. Stock',
       cell: (info) => <StatusBadge status={info.getValue()} />,
-    },
-    {
-      accessorKey: 'CompetitorURL',
-      header: 'Link',
-      cell: (info) => {
-        const url = info.getValue();
-        if (!url) return <span className="text-slate-500">—</span>;
-        return (
-          <a href={url} target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 underline underline-offset-2 transition-colors">
-            View
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-            </svg>
-          </a>
-        );
-      },
     },
     {
       id    : 'refresh',
@@ -155,7 +154,7 @@ export default function PriceTable({ data: initialData }) {
       },
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], []);
+  ], [competitorCache]);
 
   const table = useReactTable({
     data: rows,
@@ -164,7 +163,9 @@ export default function PriceTable({ data: initialData }) {
   });
 
   return (
-    <div className="rounded-xl border border-slate-700/60 shadow-2xl overflow-hidden">
+    // overflow-visible is required so the tooltip/expand panel
+    // is not clipped by the table's rounded border
+    <div className="rounded-xl border border-slate-700/60 shadow-2xl overflow-visible">
       <table className="w-full text-sm border-collapse table-fixed">
         <thead>
           {table.getHeaderGroups().map((headerGroup) => (
@@ -181,10 +182,12 @@ export default function PriceTable({ data: initialData }) {
         <tbody>
           {table.getRowModel().rows.map((row, i) => (
             <tr key={row.id}
-              className={`border-b border-slate-800 transition-colors align-middle
-                ${i % 2 === 0 ? 'bg-slate-900/40' : 'bg-slate-900/20'} hover:bg-slate-800/50`}>
+              className={`border-b border-slate-800 transition-colors
+                ${i % 2 === 0 ? 'bg-slate-900/40' : 'bg-slate-900/20'} hover:bg-slate-800/50`}
+              style={{ verticalAlign: 'middle' }}
+            >
               {row.getVisibleCells().map((cell) => (
-                <td key={cell.id} className="px-2 py-3 text-center align-middle">
+                <td key={cell.id} className="px-2 py-3 text-center align-middle relative">
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>
               ))}
