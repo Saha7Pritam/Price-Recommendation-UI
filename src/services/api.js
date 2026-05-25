@@ -41,3 +41,20 @@ export async function fetchCompetitorDetails(skuId) {
   );
   return response.data.data; // array of { CompetitorPrice, ProductURL, StoreName, StockStatus }
 }
+
+
+export async function fetchPPProducts() {
+  const response = await axios.get(`${BASE_URL}/pp-products`,
+    { withCredentials: true }
+  );
+  return response.data.data;
+}
+ 
+export async function updatePP(skuId, newPP) {
+  const response = await axios.patch(`${BASE_URL}/update-pp`,
+    { skuId, newPP },
+    { withCredentials: true }
+  );
+  return response.data.data; // { SKU_ID, PP, ManualPP_UpdatedAt, ManualPP_UpdatedBy, LastBillDate }
+}
+ 
