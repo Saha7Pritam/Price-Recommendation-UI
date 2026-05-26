@@ -1,9 +1,13 @@
 // src/App.jsx
-import { useEffect, useState, useMemo } from 'react';
-import PriceTable from './components/Pricetable';
-import SearchBar from './components/SearchBar';
+import { useEffect, useState, useMemo, useRef } from 'react';
+import PriceTable    from './components/Pricetable';
+import SearchBar     from './components/SearchBar';
 import CategoryFilter from './components/CategoryFilter';
+import PPUpdateView  from './components/PPUpdateView';
 import { fetchRecommendations, checkAuth, logout } from './services/api';
+
+// ── Views ────────────────────────────────────────────────────
+const VIEW = { HOME: 'home', PP_UPDATE: 'pp_update' };
 
 export default function App() {
   const [user, setUser]                   = useState(null);
@@ -14,10 +18,24 @@ export default function App() {
   const [lastRefreshed, setLastRefreshed] = useState(null);
   const [searchQuery, setSearchQuery]         = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [view, setView]                   = useState(VIEW.HOME);
+  const [menuOpen, setMenuOpen]           = useState(false);
+  const menuRef                           = useRef(null);
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
-  // ── Check auth on load ────────────────────────────────────
+  // ── Close menu on outside click ───────────────────────────
+  useEffect(() => {
+    function handleClick(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  // ── Auth ──────────────────────────────────────────────────
   useEffect(() => {
     checkAuth().then(res => {
       if (res.authenticated) setUser(res.user);
@@ -25,7 +43,6 @@ export default function App() {
     });
   }, []);
 
-  // ── Load data only after auth confirmed ───────────────────
   useEffect(() => {
     if (user) loadData();
   }, [user]);
@@ -50,33 +67,26 @@ export default function App() {
     setData([]);
   }
 
-  // ── Derived: unique sorted categories ────────────────────
   const categories = useMemo(() => {
     const cats = [...new Set(data.map(r => r.Category).filter(Boolean))];
     return cats.sort((a, b) => a.localeCompare(b));
   }, [data]);
 
-  // ── Filtered data ─────────────────────────────────────────
   const filteredData = useMemo(() => {
     let result = data;
-    if (selectedCategory) {
-      result = result.filter(r => r.Category === selectedCategory);
-    }
+    if (selectedCategory) result = result.filter(r => r.Category === selectedCategory);
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      result = result.filter(r =>
-        (r.SKU_ID || '').toLowerCase().includes(q)
-      );
+      result = result.filter(r => (r.SKU_ID || '').toLowerCase().includes(q));
     }
     return result;
   }, [data, searchQuery, selectedCategory]);
 
-  // ── Summary stats ─────────────────────────────────────────
   const totalProducts  = data.length;
   const optimizedCount = data.filter(r => r.ExtraProfitPct > 0).length;
   const floorCount     = totalProducts - optimizedCount;
 
-  // ── Auth loading spinner ──────────────────────────────────
+  // ── Auth guards ───────────────────────────────────────────
   if (!authChecked) {
     return (
       <div className="min-h-screen bg-[#0f1117] flex items-center justify-center">
@@ -85,7 +95,6 @@ export default function App() {
     );
   }
 
-  // ── Login page ────────────────────────────────────────────
   if (!user) {
     return (
       <div className="min-h-screen bg-[#0f1117] flex items-center justify-center">
@@ -100,7 +109,6 @@ export default function App() {
             <h1 className="text-xl font-bold text-white">TPS Price Intelligence</h1>
             <p className="text-sm text-slate-400 mt-1">Sign in with your TPS account to continue</p>
           </div>
-          
           <a
             href={`${API_BASE}/auth/login`}
             className="w-full flex items-center justify-center gap-3 px-4 py-2.5
@@ -120,13 +128,19 @@ export default function App() {
     );
   }
 
-  // ── Main app (authenticated) ──────────────────────────────
+  // ── PP Update view (full page swap) ───────────────────────
+  if (view === VIEW.PP_UPDATE) {
+    return <PPUpdateView onClose={() => setView(VIEW.HOME)} />;
+  }
+
+  // ── Main app ──────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#0f1117] font-sans">
 
       {/* ── Header ── */}
       <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-10">
         <div className="max-w-[1600px] mx-auto px-6 py-4 flex items-center justify-between">
+
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center">
               <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -135,21 +149,17 @@ export default function App() {
               </svg>
             </div>
             <div>
-              <h1 className="text-lg font-bold text-white tracking-tight">
-                TPS Price Intelligence
-              </h1>
+              <h1 className="text-lg font-bold text-white tracking-tight">TPS Price Intelligence</h1>
               <p className="text-xs text-slate-500">Price Recommendation Engine — Prototype</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             {lastRefreshed && (
               <span className="text-xs text-slate-500">
                 Last updated: {lastRefreshed.toLocaleTimeString()}
               </span>
             )}
-
-            {/* User info */}
             <span className="text-xs text-slate-400">{user.name}</span>
 
             {/* Sign out */}
@@ -161,7 +171,7 @@ export default function App() {
               Sign out
             </button>
 
-            {/* Refresh data */}
+            {/* Refresh */}
             <button
               onClick={loadData}
               disabled={loading}
@@ -175,22 +185,80 @@ export default function App() {
               </svg>
               Refresh
             </button>
+
+            {/* ── Hamburger menu ── */}
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={() => setMenuOpen(v => !v)}
+                className={`flex items-center justify-center w-8 h-8 rounded-lg transition-colors
+                  ${menuOpen ? 'bg-slate-600 text-white' : 'bg-slate-700 hover:bg-slate-600 text-slate-300'}`}
+                aria-label="Menu"
+              >
+                {menuOpen ? (
+                  // X when open
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                ) : (
+                  // Hamburger when closed
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                )}
+              </button>
+
+              {/* Dropdown panel */}
+              {menuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-56
+                  bg-slate-800 border border-slate-700 rounded-xl shadow-2xl py-1.5 z-50">
+
+                  {/* Section label */}
+                  <p className="px-3 py-1.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                    Tools
+                  </p>
+
+                  {/* Purchase Price Update */}
+                  <button
+                    onClick={() => { setView(VIEW.PP_UPDATE); setMenuOpen(false); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-slate-200
+                      hover:bg-slate-700/70 transition-colors text-left"
+                  >
+                    <div className="w-6 h-6 rounded-md bg-violet-900/60 border border-violet-700/60
+                      flex items-center justify-center flex-shrink-0">
+                      <svg className="w-3 h-3 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="font-medium">Purchase Price Update</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5">Edit PP for internal products</p>
+                    </div>
+                  </button>
+
+                  {/* Divider — space for future menu items */}
+                  <div className="mx-3 my-1.5 border-t border-slate-700/60" />
+                  <p className="px-3 py-1.5 text-[10px] text-slate-600 italic">
+                    More tools coming soon
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
 
       <main className="max-w-[1600px] mx-auto px-6 py-8">
 
-        {/* ── Stats cards ── */}
+        {/* Stats cards */}
         {!loading && !error && (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-            <StatCard label="Total Products" value={totalProducts} color="violet" />
+            <StatCard label="Total Products"   value={totalProducts}  color="violet" />
             <StatCard label="Optimized Prices" value={optimizedCount} sub="99% of competitor" color="emerald" />
-            <StatCard label="At Floor Price" value={floorCount} sub="PP × 1.30" color="sky" />
+            <StatCard label="At Floor Price"   value={floorCount}     sub="PP × 1.30" color="sky" />
           </div>
         )}
 
-        {/* ── Loading ── */}
         {loading && (
           <div className="flex flex-col items-center justify-center py-24 gap-4">
             <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
@@ -198,21 +266,18 @@ export default function App() {
           </div>
         )}
 
-        {/* ── Error ── */}
         {error && (
           <div className="p-4 rounded-xl bg-red-900/30 border border-red-700/50 text-red-400 text-sm">
             {error}
           </div>
         )}
 
-        {/* ── Empty ── */}
         {!loading && !error && data.length === 0 && (
           <div className="text-center py-24 text-slate-500">
             No recommendations found. Run the recommendation engine first.
           </div>
         )}
 
-        {/* ── Search + Filter toolbar + Table ── */}
         {!loading && !error && data.length > 0 && (
           <>
             <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
@@ -243,10 +308,6 @@ export default function App() {
 
             {filteredData.length === 0 ? (
               <div className="text-center py-20 text-slate-500">
-                <svg className="w-8 h-8 mx-auto mb-3 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
                 <p className="text-sm">No products match your search.</p>
                 <button
                   onClick={() => { setSearchQuery(''); setSelectedCategory(''); }}
@@ -265,15 +326,13 @@ export default function App() {
   );
 }
 
-// ── Stat card ─────────────────────────────────────────────────
 function StatCard({ label, value, sub, color }) {
   const colors = {
     violet: 'text-violet-400 bg-violet-900/30 border-violet-700/40',
     emerald: 'text-emerald-400 bg-emerald-900/30 border-emerald-700/40',
-    sky    : 'text-sky-400     bg-sky-900/30     border-sky-700/40',
-    amber  : 'text-amber-400   bg-amber-900/30   border-amber-700/40',
+    sky    : 'text-sky-400 bg-sky-900/30 border-sky-700/40',
+    amber  : 'text-amber-400 bg-amber-900/30 border-amber-700/40',
   };
-
   return (
     <div className={`rounded-xl border p-4 ${colors[color]}`}>
       <p className="text-xs text-slate-500 mb-1">{label}</p>
