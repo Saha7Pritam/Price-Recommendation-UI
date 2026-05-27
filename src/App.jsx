@@ -1,13 +1,14 @@
 // src/App.jsx
 import { useEffect, useState, useMemo, useRef } from 'react';
-import PriceTable    from './components/Pricetable';
-import SearchBar     from './components/SearchBar';
-import CategoryFilter from './components/CategoryFilter';
-import PPUpdateView  from './components/PPUpdateView';
+import PriceTable       from './components/Pricetable';
+import SearchBar        from './components/SearchBar';
+import CategoryFilter   from './components/CategoryFilter';
+import PPUpdateView     from './components/PPUpdateView';
+import BulkPPUpdateView from './components/BulkPPUpdateView';
 import { fetchRecommendations, checkAuth, logout } from './services/api';
 
 // ── Views ────────────────────────────────────────────────────
-const VIEW = { HOME: 'home', PP_UPDATE: 'pp_update' };
+const VIEW = { HOME: 'home', PP_UPDATE: 'pp_update', BULK_PP: 'bulk_pp' };
 
 export default function App() {
   const [user, setUser]                   = useState(null);
@@ -133,6 +134,11 @@ export default function App() {
     return <PPUpdateView onClose={() => setView(VIEW.HOME)} />;
   }
 
+  // ── Bulk PP Update view (full page swap) ──────────────────
+  if (view === VIEW.BULK_PP) {
+    return <BulkPPUpdateView onClose={() => setView(VIEW.HOME)} user={user} />;
+  }
+
   // ── Main app ──────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#0f1117] font-sans">
@@ -195,12 +201,10 @@ export default function App() {
                 aria-label="Menu"
               >
                 {menuOpen ? (
-                  // X when open
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 ) : (
-                  // Hamburger when closed
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
@@ -209,15 +213,14 @@ export default function App() {
 
               {/* Dropdown panel */}
               {menuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-56
+                <div className="absolute right-0 top-full mt-2 w-60
                   bg-slate-800 border border-slate-700 rounded-xl shadow-2xl py-1.5 z-50">
 
-                  {/* Section label */}
                   <p className="px-3 py-1.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
                     Tools
                   </p>
 
-                  {/* Purchase Price Update */}
+                  {/* Purchase Price Update — single edit */}
                   <button
                     onClick={() => { setView(VIEW.PP_UPDATE); setMenuOpen(false); }}
                     className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-slate-200
@@ -232,11 +235,29 @@ export default function App() {
                     </div>
                     <div>
                       <p className="font-medium">Purchase Price Update</p>
-                      <p className="text-[10px] text-slate-500 mt-0.5">Edit PP for internal products</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5">Edit PP one product at a time</p>
                     </div>
                   </button>
 
-                  {/* Divider — space for future menu items */}
+                  {/* Bulk PP Update — CSV upload */}
+                  <button
+                    onClick={() => { setView(VIEW.BULK_PP); setMenuOpen(false); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-slate-200
+                      hover:bg-slate-700/70 transition-colors text-left"
+                  >
+                    <div className="w-6 h-6 rounded-md bg-emerald-900/60 border border-emerald-700/60
+                      flex items-center justify-center flex-shrink-0">
+                      <svg className="w-3 h-3 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                          d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="font-medium">Bulk PP Update</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5">Upload CSV to update many at once</p>
+                    </div>
+                  </button>
+
                   <div className="mx-3 my-1.5 border-t border-slate-700/60" />
                   <p className="px-3 py-1.5 text-[10px] text-slate-600 italic">
                     More tools coming soon
