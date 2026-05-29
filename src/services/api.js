@@ -50,6 +50,7 @@ export async function fetchPPProducts() {
   return response.data.data;
 }
  
+
 export async function updatePP(skuId, newPP) {
   const response = await axios.patch(`${BASE_URL}/update-pp`,
     { skuId, newPP },
@@ -58,8 +59,6 @@ export async function updatePP(skuId, newPP) {
   return response.data.data; // { SKU_ID, PP, ManualPP_UpdatedAt, ManualPP_UpdatedBy, LastBillDate }
 }
  
-
-
 
 // ── Download blank CSV template ───────────────────────────────
 // Triggers a file download in the browser.
@@ -81,26 +80,65 @@ export async function downloadPPTemplate() {
   window.URL.revokeObjectURL(url);
 }
  
-// ── Validate a list of SKUs exist in InternalProducts ─────────
-// Called after client-side CSV parse, before showing the preview.
-// Returns { valid: string[], notFound: string[] }
+
+
+
+
+
+
+
+// ── Validate SKUs — now returns currentPP per matched SKU ─────
 export async function validateBulkPP(skus) {
   const response = await axios.post(`${BASE_URL}/validate-skus`,
     { skus },
     { withCredentials: true }
   );
-  return response.data; // { valid: [...], notFound: [...] }
+  // Returns: { valid: [{ sku, currentPP }], notFound: string[] }
+  return response.data;
 }
  
-// ── Submit bulk PP update ─────────────────────────────────────
-// rows: [{ skuId: string, newPP: number }, ...]
-// Returns { updated: number, updatedBy: string, updatedAt: string }
-export async function bulkUpdatePP(rows) {
+// ── Submit bulk PP update — now sends unidentified rows too ───
+// rows:         [{ skuId, newPP }]
+// unidentified: [{ sku, pp }]
+// fileName:     string
+export async function bulkUpdatePP(rows, unidentified = [], fileName = '') {
   const response = await axios.post(`${BASE_URL}/bulk-update-pp`,
-    { rows },
+    { rows, unidentified, fileName },
+    { withCredentials: true }
+  );
+  return response.data.data;
+  // Returns: { sessionId, updated, unidentifiedCount, updatedBy, updatedAt }
+}
+ 
+// ── Fetch bulk upload history ─────────────────────────────────
+export async function fetchBulkUploadHistory() {
+  const response = await axios.get(`${BASE_URL}/bulk-upload-history`,
     { withCredentials: true }
   );
   return response.data.data;
 }
-
-
+ 
+// ── Fetch unidentified SKUs for a session ─────────────────────
+export async function fetchSessionUnidentified(sessionId) {
+  const response = await axios.get(
+    `${BASE_URL}/bulk-upload-session/${sessionId}/unidentified`,
+    { withCredentials: true }
+  );
+  return response.data.data;
+}
+ 
+// ── Export unidentified SKUs as CSV download ──────────────────
+export async function exportSessionUnidentified(sessionId) {
+  const response = await axios.get(
+    `${BASE_URL}/bulk-upload-session/${sessionId}/export`,
+    { withCredentials: true, responseType: 'blob' }
+  );
+  const url  = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement('a');
+  link.href  = url;
+  link.setAttribute('download', `unidentified_skus_${sessionId.slice(0, 8)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  link.parentNode.removeChild(link);
+  window.URL.revokeObjectURL(url);
+}
