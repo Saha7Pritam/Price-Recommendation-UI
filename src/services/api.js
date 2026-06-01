@@ -142,3 +142,26 @@ export async function exportSessionUnidentified(sessionId) {
   link.parentNode.removeChild(link);
   window.URL.revokeObjectURL(url);
 }
+
+
+
+// ── Fetch all category settings ───────────────────────────────
+export async function fetchCategorySettings() {
+  const response = await axios.get(`${BASE_URL}/category-settings`,
+    { withCredentials: true }
+  );
+  return response.data.data;
+}
+ 
+// ── Update one category's settings ───────────────────────────
+// payload: { GST, CostOfBusiness, ProfitMargin, ScrapFreqDays, IsScrapEnabled }
+// Pass null for a business variable to revert it to system default.
+export async function updateCategorySettings(categoryName, payload) {
+  const response = await axios.put(
+    `${BASE_URL}/category-settings/${encodeURIComponent(categoryName)}`,
+    payload,
+    { withCredentials: true }
+  );
+  return response.data.data;
+}
+ 
