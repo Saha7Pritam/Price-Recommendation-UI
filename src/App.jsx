@@ -6,9 +6,10 @@ import CategoryFilter   from './components/CategoryFilter';
 import PPUpdateView     from './components/PPUpdateView';
 import BulkPPUpdateView from './components/BulkPPUpdateView';
 import { fetchRecommendations, checkAuth, logout } from './services/api';
+import SettingsView from './components/SettingsView';
 
 // ── Views ────────────────────────────────────────────────────
-const VIEW = { HOME: 'home', PP_UPDATE: 'pp_update', BULK_PP: 'bulk_pp' };
+const VIEW = { HOME: 'home', PP_UPDATE: 'pp_update', BULK_PP: 'bulk_pp', SETTINGS: 'settings' };
 
 export default function App() {
   const [user, setUser]                   = useState(null);
@@ -139,6 +140,14 @@ export default function App() {
     return <BulkPPUpdateView onClose={() => setView(VIEW.HOME)} user={user} />;
   }
 
+  // ── EDIT 3: Add the SettingsView render block ─────────────────
+// Add this block alongside the other view guards
+// (after the BULK_PP block, before the main app return):
+ 
+if (view === VIEW.SETTINGS) {
+  return <SettingsView onClose={() => setView(VIEW.HOME)} />;
+}
+
   // ── Main app ──────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#0f1117] font-sans">
@@ -257,6 +266,39 @@ export default function App() {
                       <p className="text-[10px] text-slate-500 mt-0.5">Upload CSV to update many at once</p>
                     </div>
                   </button>
+
+
+
+
+                  <div className="mx-3 my-1.5 border-t border-slate-700/60" />
+ 
+<p className="px-3 py-1.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+  Configuration
+</p>
+ 
+<button
+  onClick={() => { setView(VIEW.SETTINGS); setMenuOpen(false); }}
+  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-slate-200
+    hover:bg-slate-700/70 transition-colors text-left"
+>
+  <div className="w-6 h-6 rounded-md bg-slate-700/60 border border-slate-600/60
+    flex items-center justify-center flex-shrink-0">
+    <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  </div>
+  <div>
+    <p className="font-medium">Settings</p>
+    <p className="text-[10px] text-slate-500 mt-0.5">Business variables & scraping config</p>
+  </div>
+</button>
+
+
+
+
+
 
                   <div className="mx-3 my-1.5 border-t border-slate-700/60" />
                   <p className="px-3 py-1.5 text-[10px] text-slate-600 italic">
