@@ -165,3 +165,31 @@ export async function updateCategorySettings(categoryName, payload) {
   return response.data.data;
 }
  
+
+
+
+
+
+
+
+// ── User management (admin only) ──────────────────────────────
+export async function fetchUsers() {
+  const response = await axios.get(`${BASE_URL}/users`, { withCredentials: true });
+  return response.data.data;
+}
+
+export async function addUser(email, role) {
+  const response = await axios.post(
+    `${BASE_URL}/users`,
+    { email, role },
+    { withCredentials: true }
+  );
+  return response.data.data;
+}
+
+export async function removeUser(email) {
+  await axios.delete(
+    `${BASE_URL}/users/${encodeURIComponent(email)}`,
+    { withCredentials: true }
+  );
+}
