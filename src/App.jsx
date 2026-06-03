@@ -8,6 +8,7 @@ import BulkPPUpdateView from "./components/BulkPPUpdateView";
 import { fetchRecommendations, checkAuth, logout } from "./services/api";
 import SettingsView from "./components/SettingsView";
 import UserManagementView from "./components/UserManagementView";
+import RecalculateButton from "./components/RecalculateButton";
 
 // ── Views ────────────────────────────────────────────────────
 const VIEW = {
@@ -246,6 +247,12 @@ export default function App() {
               </svg>
               Refresh
             </button>
+
+
+            {/* New: triggers full recalculation */}
+<RecalculateButton onDone={loadData} />
+
+
 
             {/* ── Hamburger menu ── */}
             <div className="relative" ref={menuRef}>

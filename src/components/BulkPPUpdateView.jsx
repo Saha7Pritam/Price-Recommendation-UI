@@ -14,7 +14,7 @@
 //     Green = increase, Red = decrease. Only shown for matched SKUs.
 // ─────────────────────────────────────────────────────────────
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef } from 'react';
 import { downloadPPTemplate, validateBulkPP, bulkUpdatePP } from '../services/api';
 
 // ── Stage constants ───────────────────────────────────────────
