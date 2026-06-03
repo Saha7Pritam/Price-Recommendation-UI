@@ -193,3 +193,23 @@ export async function removeUser(email) {
     { withCredentials: true }
   );
 }
+
+
+
+// ── Trigger recommendation engine ─────────────────────────────
+export async function runRecommendationEngine() {
+  const response = await axios.post(
+    `${BASE_URL}/run-recommendation-engine`, {},
+    { withCredentials: true }
+  );
+  return response.data; // { jobId }
+}
+
+// ── Poll job status ───────────────────────────────────────────
+export async function getRecommendationJobStatus(jobId) {
+  const response = await axios.get(
+    `${BASE_URL}/recommendation-job/${jobId}`,
+    { withCredentials: true }
+  );
+  return response.data.data; // { status, updatedCount, error, ... }
+}
